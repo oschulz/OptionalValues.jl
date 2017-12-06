@@ -11,15 +11,15 @@ Base.isnan(x::IntegerWithNaN{T,E}) where {T,E} =
 
 
 Base.promote_rule(::Type{T}, ::Type{IntegerWithNaN{U}}) where {T<:Integer,U} =
-    with_nan(promote_type(T,U))
+    withnan(promote_type(T,U))
 
 Base.promote_rule(::Type{T}, ::Type{IntegerWithNaN{U}}) where {T<:AbstractFloat,U} =
     float(promote_type(T,U))
 
 
-function Base.convert(TN::Type{IntegerWithNaN{T,E}}, x::U) where {T,E,U<:Integer}
+function Base.convert(TN::Type{IntegerWithNaN{T,E}}, x::Integer) where {T,E}
     enc_x = convert(E, x)
-    if typemax(E) > typemax(U)
+    if typemax(E) > typemax(x)
         TN(enc_x)
     else
         if enc_x != encode_nan(E)
@@ -38,7 +38,7 @@ function Base.convert(T::Type{<:Integer}, x::IntegerWithNaN)
     end
 end
 
-function Base.convert(TN::Type{<:IntegerWithNaN{T,E}}, x::IntegerWithNaN) where {T,E}
+function Base.convert(TN::Type{IntegerWithNaN{T,E}}, x::IntegerWithNaN) where {T,E}
     if !isnan(x)
         TN(convert(E, convert(T, x.encoded)))
     else
@@ -47,31 +47,31 @@ function Base.convert(TN::Type{<:IntegerWithNaN{T,E}}, x::IntegerWithNaN) where 
 end
 
 
-Base.rem(x::IntegerWithNaN, ::Type{<:Integer}) =
+Base.rem(x::IntegerWithNaN{T,E}, ::Type{<:Integer}) where {T,E} =
     rem(x.encoded, T)
 
 Base.rem(x::Integer, TN::Type{IntegerWithNaN{T,E}}) where {T,E} =
     TN(rem(rem(x, T), E))
 
-Base.rem(x::IntegerWithNaN, TN::Type{<:IntegerWithNaN{T,E}}) where{T,E} =
+Base.rem(x::IntegerWithNaN, TN::Type{IntegerWithNaN{T,E}}) where {T,E} =
     TN(rem(x.encoded, E))
 
 
 
 
-function with_nan end
-export with_nan
+function withnan end
+export withnan
 
-Base.@pure with_nan(::Type{Int8}) = IntegerWithNaN{Int8,Int32}
-Base.@pure with_nan(::Type{UInt8}) = IntegerWithNaN{UInt8,UInt32}
-Base.@pure with_nan(::Type{Int16}) = IntegerWithNaN{Int16,Int32}
-Base.@pure with_nan(::Type{UInt16}) = IntegerWithNaN{UInt16,UInt32}
-Base.@pure with_nan(::Type{Int32}) = IntegerWithNaN{Int32,Int32}
-Base.@pure with_nan(::Type{UInt32}) = IntegerWithNaN{UInt32,UInt32}
-Base.@pure with_nan(::Type{Int64}) = IntegerWithNaN{Int64,Int64}
-Base.@pure with_nan(::Type{UInt64}) = IntegerWithNaN{UInt64,UInt64}
+Base.@pure withnan(::Type{Int8}) = IntegerWithNaN{Int8,Int32}
+Base.@pure withnan(::Type{UInt8}) = IntegerWithNaN{UInt8,UInt32}
+Base.@pure withnan(::Type{Int16}) = IntegerWithNaN{Int16,Int32}
+Base.@pure withnan(::Type{UInt16}) = IntegerWithNaN{UInt16,UInt32}
+Base.@pure withnan(::Type{Int32}) = IntegerWithNaN{Int32,Int32}
+Base.@pure withnan(::Type{UInt32}) = IntegerWithNaN{UInt32,UInt32}
+Base.@pure withnan(::Type{Int64}) = IntegerWithNaN{Int64,Int64}
+Base.@pure withnan(::Type{UInt64}) = IntegerWithNaN{UInt64,UInt64}
 
-with_nan(x::Integer) = convert(with_nan(typeof(x)), x)
+withnan(x::Integer) = convert(withnan(typeof(x)), x)
 
 
 function intnan end
@@ -79,7 +79,7 @@ export intnan
 
 Base.@pure intnan(TN::Type{IntegerWithNaN{T,E}}) where {T,E} = TN(encode_nan(E))
 
-intnan(T::Type{<:Integer}) = intnan(with_nan(T))
+intnan(T::Type{<:Integer}) = intnan(withnan(T))
 
 
 Base.@pure encode_nan(E::Type{<:Integer}) = typemax(E)
