@@ -6,7 +6,7 @@ struct IntegerWithNaN{T<:Integer,E<:Integer} <: Integer
 end
 
 
-Base.isnan(x::IntegerWithNaN{T,E}) where {T,N} =
+Base.isnan(x::IntegerWithNaN{T,E}) where {T,E} =
     x.encoded == encode_nan(E)
 
 
@@ -26,7 +26,7 @@ function Base.convert(TN::Type{IntegerWithNaN{T,E}}, x::U) where {T,E,U<:Integer
             TN(enc_x)
         else
             throw(InexactError())
-        fi
+        end
     end
 end
 
@@ -53,7 +53,7 @@ Base.rem(x::IntegerWithNaN, ::Type{<:Integer}) =
 Base.rem(x::Integer, TN::Type{IntegerWithNaN{T,E}}) where {T,E} =
     TN(rem(rem(x, T), E))
 
-Base.rem(x::IntegerWithNaN, TN::Type{<:IntegerWithNaN{T,E}}) =
+Base.rem(x::IntegerWithNaN, TN::Type{<:IntegerWithNaN{T,E}}) where{T,E} =
     TN(rem(x.encoded, E))
 
 
@@ -62,14 +62,14 @@ Base.rem(x::IntegerWithNaN, TN::Type{<:IntegerWithNaN{T,E}}) =
 function with_nan end
 export with_nan
 
-@static with_nan(::Type{Int8}) = IntegerWithNaN{Int8,Int32}
-@static with_nan(::Type{UInt8}) = IntegerWithNaN{UInt8,UInt32}
-@static with_nan(::Type{Int16}) = IntegerWithNaN{Int16,Int32}
-@static with_nan(::Type{UInt16}) = IntegerWithNaN{UInt16,UInt32}
-@static with_nan(::Type{Int32}) = IntegerWithNaN{Int32,Int32}
-@static with_nan(::Type{UInt32}) = IntegerWithNaN{UInt32,UInt32}
-@static with_nan(::Type{Int64}) = IntegerWithNaN{Int64,Int64}
-@static with_nan(::Type{UInt64}) = IntegerWithNaN{UInt64,UInt64}
+Base.@pure with_nan(::Type{Int8}) = IntegerWithNaN{Int8,Int32}
+Base.@pure with_nan(::Type{UInt8}) = IntegerWithNaN{UInt8,UInt32}
+Base.@pure with_nan(::Type{Int16}) = IntegerWithNaN{Int16,Int32}
+Base.@pure with_nan(::Type{UInt16}) = IntegerWithNaN{UInt16,UInt32}
+Base.@pure with_nan(::Type{Int32}) = IntegerWithNaN{Int32,Int32}
+Base.@pure with_nan(::Type{UInt32}) = IntegerWithNaN{UInt32,UInt32}
+Base.@pure with_nan(::Type{Int64}) = IntegerWithNaN{Int64,Int64}
+Base.@pure with_nan(::Type{UInt64}) = IntegerWithNaN{UInt64,UInt64}
 
 with_nan(x::Integer) = convert(with_nan(typeof(x)), x)
 
@@ -77,12 +77,12 @@ with_nan(x::Integer) = convert(with_nan(typeof(x)), x)
 function intnan end
 export intnan
 
-@static intnan(TN::Type{IntegerWithNaN{T,E}}) where {T,E} = TN(encode_nan(E))
+Base.@pure intnan(TN::Type{IntegerWithNaN{T,E}}) where {T,E} = TN(encode_nan(E))
 
 intnan(T::Type{<:Integer}) = intnan(with_nan(T))
 
 
-@static encode_nan(E::Type{<:Integer}) = typemax(E)
+Base.@pure encode_nan(E::Type{<:Integer}) = typemax(E)
 
 
 
