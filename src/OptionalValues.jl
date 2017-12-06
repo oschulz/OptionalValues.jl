@@ -1,5 +1,8 @@
+# This file is a part of OptionalValues.jl, licensed under the MIT License (MIT).
+
+__precompile__(true)
+
 module OptionalValues
 
-# package code goes here
 
 end # module
