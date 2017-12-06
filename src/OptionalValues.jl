@@ -4,10 +4,6 @@ __precompile__(true)
 
 module OptionalValues
 
-using Reexport
-
-@reexport using Missings
-
-include("functions.jl")
+include("integer_with_nan.jl")
 
 end # module
