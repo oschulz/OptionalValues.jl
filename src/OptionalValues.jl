@@ -4,5 +4,10 @@ __precompile__(true)
 
 module OptionalValues
 
+using Reexport
+
+@reexport using Missings
+
+include("functions.jl")
 
 end # module
