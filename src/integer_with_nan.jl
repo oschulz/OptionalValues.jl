@@ -1,14 +1,12 @@
 # This file is a part of OptionalValues.jl, licensed under the MIT License (MIT).
 
-abstract type _Unsafe end
-
 
 struct IntegerWithNaN{T<:Integer} <: Integer
     encoded::T
 
     IntegerWithNaN{T}() where {T<:Integer} = new(encode_nan(T))
 
-    IntegerWithNaN{T}(::Type{_Unsafe}, x) where {T<:Integer} = new(x)
+    IntegerWithNaN{T}(x) where {T<:Integer} = new(x)
 end
 
 export IntegerWithNaN
@@ -27,13 +25,7 @@ Base.promote_rule(::Type{T}, ::Type{IntegerWithNaN{U}}) where {T<:AbstractFloat,
     float(promote_type(T,U))
 
 
-function Base.convert(TN::Type{IntegerWithNaN{T}}, x::Integer) where {T}
-    if typemax(T) > typemax(x)
-        TN(_Unsafe, x)
-    else
-        ifelse(x != encode_nan(T), TN(_Unsafe, x), TN())
-    end
-end
+Base.convert(TN::Type{IntegerWithNaN{T}}, x::Integer) where {T} = TN(x)
 
 function Base.convert(T::Type{<:Integer}, x::IntegerWithNaN)
     if !isnan(x)
@@ -62,10 +54,10 @@ Base.rem(x::IntegerWithNaN{T}, ::Type{<:Integer}) where {T} =
     rem(x.encoded, T)
 
 Base.rem(x::Integer, TN::Type{IntegerWithNaN{T}}) where {T} =
-    TN(_Unsafe, rem(x, T))
+    TN(rem(x, T))
 
 Base.rem(x::IntegerWithNaN, TN::Type{IntegerWithNaN{T}}) where {T} =
-    ifelse(isnan(x), TN(), TN(_Unsafe, rem(x.encoded, T)))
+    ifelse(isnan(x), TN(), TN(rem(x.encoded, T)))
 
 
 import Base: ==, !=
