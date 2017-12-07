@@ -11,6 +11,8 @@ struct IntegerWithNaN{T<:Integer} <: Integer
     IntegerWithNaN{T}(::Type{_Unsafe}, x) where {T<:Integer} = new(x)
 end
 
+export IntegerWithNaN
+
 
 Base.isnan(x::IntegerWithNaN{T}) where {T} =
     x.encoded == encode_nan(T)
@@ -18,6 +20,8 @@ Base.isnan(x::IntegerWithNaN{T}) where {T} =
 
 Base.promote_rule(::Type{T}, ::Type{IntegerWithNaN{U}}) where {T<:Integer,U} =
     withnan(promote_type(T,U))
+
+Base.promote_rule(::Type{Bool}, TN::Type{IntegerWithNaN{T}}) where {T} = TN
 
 Base.promote_rule(::Type{T}, ::Type{IntegerWithNaN{U}}) where {T<:AbstractFloat,U} =
     float(promote_type(T,U))
@@ -75,8 +79,14 @@ for op in (:(==), :(!=))
         $op(a::IntegerWithNaN, b::Number) =
             ifelse(isnan(a), false, $op(a.encoded, b))
 
+        #$op(a::IntegerWithNaN, b::Bool) =
+        #    ifelse(isnan(a), false, $op(a.encoded, b))
+
         $op(a::Number, b::IntegerWithNaN) =
             ifelse(isnan(b), false, $op(a, b.encoded))
+
+        #$op(a::Bool, b::IntegerWithNaN) =
+        #    ifelse(isnan(b), false, $op(a, b.encoded))
 
         $op(a::IntegerWithNaN, b::IntegerWithNaN) =
             ifelse(isnan(a) || isnan(b), false, $op(a.encoded, b.encoded))
@@ -133,6 +143,8 @@ Base.@pure withnan(::Type{Int32}) = IntegerWithNaN{Int32}
 Base.@pure withnan(::Type{UInt32}) = IntegerWithNaN{UInt32}
 Base.@pure withnan(::Type{Int64}) = IntegerWithNaN{Int64}
 Base.@pure withnan(::Type{UInt64}) = IntegerWithNaN{UInt64}
+
+# Base.@pure withnan(::Type{Bool}) = IntegerWithNaN{Int8}
 
 withnan(x::Integer) = convert(withnan(typeof(x)), x)
 
