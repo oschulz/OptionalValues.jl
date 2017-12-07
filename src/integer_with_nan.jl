@@ -31,11 +31,7 @@ function Base.convert(TN::Type{IntegerWithNaN{T}}, x::Integer) where {T}
     if typemax(T) > typemax(x)
         TN(_Unsafe, x)
     else
-        if x != encode_nan(T)
-            TN(_Unsafe, x)
-        else
-            throw(InexactError())
-        end
+        ifelse(x != encode_nan(T), TN(_Unsafe, x), TN())
     end
 end
 
