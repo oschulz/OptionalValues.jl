@@ -1,13 +1,19 @@
 # This file is a part of OptionalValues.jl, licensed under the MIT License (MIT).
 
+abstract type _Unsafe end
 
-struct IntegerWithNaN{T<:Integer,E<:Integer} <: Integer
-    encoded::E
+
+struct IntegerWithNaN{T<:Integer} <: Integer
+    encoded::T
+
+    IntegerWithNaN{T}() where {T<:Integer} = new(encode_nan(T))
+
+    IntegerWithNaN{T}(::Type{_Unsafe}, x) where {T<:Integer} = new(x)
 end
 
 
-Base.isnan(x::IntegerWithNaN{T,E}) where {T,E} =
-    x.encoded == encode_nan(E)
+Base.isnan(x::IntegerWithNaN{T}) where {T} =
+    x.encoded == encode_nan(T)
 
 
 Base.promote_rule(::Type{T}, ::Type{IntegerWithNaN{U}}) where {T<:Integer,U} =
@@ -17,13 +23,12 @@ Base.promote_rule(::Type{T}, ::Type{IntegerWithNaN{U}}) where {T<:AbstractFloat,
     float(promote_type(T,U))
 
 
-function Base.convert(TN::Type{IntegerWithNaN{T,E}}, x::Integer) where {T,E}
-    enc_x = convert(E, x)
-    if typemax(E) > typemax(x)
-        TN(enc_x)
+function Base.convert(TN::Type{IntegerWithNaN{T}}, x::Integer) where {T}
+    if typemax(T) > typemax(x)
+        TN(_Unsafe, x)
     else
-        if enc_x != encode_nan(E)
-            TN(enc_x)
+        if x != encode_nan(T)
+            TN(_Unsafe, x)
         else
             throw(InexactError())
         end
@@ -38,23 +43,29 @@ function Base.convert(T::Type{<:Integer}, x::IntegerWithNaN)
     end
 end
 
-function Base.convert(TN::Type{IntegerWithNaN{T,E}}, x::IntegerWithNaN) where {T,E}
+function Base.convert(TN::Type{IntegerWithNaN{T}}, x::IntegerWithNaN) where {T}
     if !isnan(x)
-        TN(convert(E, convert(T, x.encoded)))
+        TN(convert(T, x.encoded))
     else
         intnan(T)
     end
 end
 
+Base.convert(TN::Type{IntegerWithNaN{T}}, x::AbstractFloat) where {T} =
+    ifelse(isnan(x), TN(), TN(convert(T, x)))
 
-Base.rem(x::IntegerWithNaN{T,E}, ::Type{<:Integer}) where {T,E} =
+Base.convert(T::Type{<:AbstractFloat}, x::IntegerWithNaN) =
+    ifelse(isnan(x), convert(T, NaN), convert(T, x.encoded))
+
+
+Base.rem(x::IntegerWithNaN{T}, ::Type{<:Integer}) where {T} =
     rem(x.encoded, T)
 
-Base.rem(x::Integer, TN::Type{IntegerWithNaN{T,E}}) where {T,E} =
-    TN(rem(rem(x, T), E))
+Base.rem(x::Integer, TN::Type{IntegerWithNaN{T}}) where {T} =
+    TN(_Unsafe, rem(x, T))
 
-Base.rem(x::IntegerWithNaN, TN::Type{IntegerWithNaN{T,E}}) where {T,E} =
-    TN(rem(x.encoded, E))
+Base.rem(x::IntegerWithNaN, TN::Type{IntegerWithNaN{T}}) where {T} =
+    ifelse(isnan(x), intnan(TN), TN(_Unsafe, rem(x.encoded, T)))
 
 
 
@@ -62,14 +73,14 @@ Base.rem(x::IntegerWithNaN, TN::Type{IntegerWithNaN{T,E}}) where {T,E} =
 function withnan end
 export withnan
 
-Base.@pure withnan(::Type{Int8}) = IntegerWithNaN{Int8,Int32}
-Base.@pure withnan(::Type{UInt8}) = IntegerWithNaN{UInt8,UInt32}
-Base.@pure withnan(::Type{Int16}) = IntegerWithNaN{Int16,Int32}
-Base.@pure withnan(::Type{UInt16}) = IntegerWithNaN{UInt16,UInt32}
-Base.@pure withnan(::Type{Int32}) = IntegerWithNaN{Int32,Int32}
-Base.@pure withnan(::Type{UInt32}) = IntegerWithNaN{UInt32,UInt32}
-Base.@pure withnan(::Type{Int64}) = IntegerWithNaN{Int64,Int64}
-Base.@pure withnan(::Type{UInt64}) = IntegerWithNaN{UInt64,UInt64}
+Base.@pure withnan(::Type{Int8}) = IntegerWithNaN{Int16}
+Base.@pure withnan(::Type{UInt8}) = IntegerWithNaN{UInt16}
+Base.@pure withnan(::Type{Int16}) = IntegerWithNaN{Int32}
+Base.@pure withnan(::Type{UInt16}) = IntegerWithNaN{UInt32}
+Base.@pure withnan(::Type{Int32}) = IntegerWithNaN{Int32}
+Base.@pure withnan(::Type{UInt32}) = IntegerWithNaN{UInt32}
+Base.@pure withnan(::Type{Int64}) = IntegerWithNaN{Int64}
+Base.@pure withnan(::Type{UInt64}) = IntegerWithNaN{UInt64}
 
 withnan(x::Integer) = convert(withnan(typeof(x)), x)
 
@@ -77,14 +88,9 @@ withnan(x::Integer) = convert(withnan(typeof(x)), x)
 function intnan end
 export intnan
 
-Base.@pure intnan(TN::Type{IntegerWithNaN{T,E}}) where {T,E} = TN(encode_nan(E))
+Base.@pure intnan(TN::Type{IntegerWithNaN{T}}) where {T} = TN()
 
 intnan(T::Type{<:Integer}) = intnan(withnan(T))
 
 
-Base.@pure encode_nan(E::Type{<:Integer}) = typemax(E)
-
-
-
-
-
+Base.@pure encode_nan(T::Type{<:Integer}) = typemax(T)
