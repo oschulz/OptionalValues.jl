@@ -79,14 +79,8 @@ for op in (:(==), :(!=))
         $op(a::IntegerWithNaN, b::Number) =
             ifelse(isnan(a), false, $op(a.encoded, b))
 
-        #$op(a::IntegerWithNaN, b::Bool) =
-        #    ifelse(isnan(a), false, $op(a.encoded, b))
-
         $op(a::Number, b::IntegerWithNaN) =
             ifelse(isnan(b), false, $op(a, b.encoded))
-
-        #$op(a::Bool, b::IntegerWithNaN) =
-        #    ifelse(isnan(b), false, $op(a, b.encoded))
 
         $op(a::IntegerWithNaN, b::IntegerWithNaN) =
             ifelse(isnan(a) || isnan(b), false, $op(a.encoded, b.encoded))
@@ -119,7 +113,17 @@ for op in (:(+), :(-), :(*), :(/), :(^))
             ifelse(isnan(a), nanvalue(R), convert(R, $op(a.encoded, b)))
         end
 
+        function $op(a::IntegerWithNaN, b::Bool)
+            R = _result_type(a, b)
+            ifelse(isnan(a), nanvalue(R), convert(R, $op(a.encoded, b)))
+        end
+
         function $op(a::Number, b::IntegerWithNaN)
+            R = _result_type(a, b)
+            ifelse(isnan(b), nanvalue(R), convert(R, $op(a, b.encoded)))
+        end
+
+        function $op(a::Bool, b::IntegerWithNaN)
             R = _result_type(a, b)
             ifelse(isnan(b), nanvalue(R), convert(R, $op(a, b.encoded)))
         end
