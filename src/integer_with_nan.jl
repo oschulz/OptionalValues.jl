@@ -47,7 +47,7 @@ function Base.convert(TN::Type{IntegerWithNaN{T}}, x::IntegerWithNaN) where {T}
     if !isnan(x)
         TN(convert(T, x.encoded))
     else
-        intnan(T)
+        TN()
     end
 end
 
@@ -65,9 +65,61 @@ Base.rem(x::Integer, TN::Type{IntegerWithNaN{T}}) where {T} =
     TN(_Unsafe, rem(x, T))
 
 Base.rem(x::IntegerWithNaN, TN::Type{IntegerWithNaN{T}}) where {T} =
-    ifelse(isnan(x), intnan(TN), TN(_Unsafe, rem(x.encoded, T)))
+    ifelse(isnan(x), TN(), TN(_Unsafe, rem(x.encoded, T)))
 
 
+import Base: ==, !=
+
+for op in (:(==), :(!=))
+    @eval begin
+        $op(a::IntegerWithNaN, b::Number) =
+            ifelse(isnan(a), false, $op(a.encoded, b))
+
+        $op(a::Number, b::IntegerWithNaN) =
+            ifelse(isnan(b), false, $op(a, b.encoded))
+
+        $op(a::IntegerWithNaN, b::IntegerWithNaN) =
+            ifelse(isnan(a) || isnan(b), false, $op(a.encoded, b.encoded))
+    end
+end
+
+
+import Base: <, <=
+
+for op in (:(<), :(<=))
+    @eval begin
+        $op(a::IntegerWithNaN, b::Real) =
+            ifelse(isnan(a), false, $op(a.encoded, b))
+
+        $op(a::Real, b::IntegerWithNaN) =
+            ifelse(isnan(b), false, $op(a, b.encoded))
+
+        $op(a::IntegerWithNaN, b::IntegerWithNaN) =
+            ifelse(isnan(a) || isnan(b), false, $op(a.encoded, b.encoded))
+    end
+end
+
+
+import Base: +, -, *, /, ^
+
+for op in (:(+), :(-), :(*), :(/), :(^))
+    @eval begin
+        function $op(a::IntegerWithNaN, b::Number)
+            R = _result_type(a, b)
+            ifelse(isnan(a), nanvalue(R), convert(R, $op(a.encoded, b)))
+        end
+
+        function $op(a::Number, b::IntegerWithNaN)
+            R = _result_type(a, b)
+            ifelse(isnan(b), nanvalue(R), convert(R, $op(a, b.encoded)))
+        end
+
+        function $op(a::IntegerWithNaN, b::IntegerWithNaN)
+            R = _result_type(a, b)
+            ifelse(isnan(a) || isnan(b), nanvalue(R), convert(R, $op(a.encoded, b.encoded)))
+        end
+    end
+end
 
 
 function withnan end
@@ -85,12 +137,13 @@ Base.@pure withnan(::Type{UInt64}) = IntegerWithNaN{UInt64}
 withnan(x::Integer) = convert(withnan(typeof(x)), x)
 
 
-function intnan end
-export intnan
+function nanvalue end
+export nanvalue
 
-Base.@pure intnan(TN::Type{IntegerWithNaN{T}}) where {T} = TN()
-
-intnan(T::Type{<:Integer}) = intnan(withnan(T))
-
+Base.@pure nanvalue(TN::Type{IntegerWithNaN{T}}) where {T} = TN()
+Base.@pure nanvalue(T::Type{<:AbstractFloat}) = T(NaN)
 
 Base.@pure encode_nan(T::Type{<:Integer}) = typemax(T)
+
+
+_result_type(a::T, b::U) where {T,U} = promote_type(T, U)
