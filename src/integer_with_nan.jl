@@ -155,6 +155,59 @@ for op in (:(div), :(fld), :(cld), :(rem), :(mod), :(mod1), :(fld1), :(max), :(m
 end
 
 
+
+#=
+
+invmod
+gcdx
+
+gcd(a::Integer) = a
+lcm(a::Integer) = a
+
+powermod
+
+nextpow2(x::Integer)
+prevpow2(x::Integer)
+ispow2(x::Integer)
+isqrt(n::Integer)
+
+factorial(n::Integer)
+binomial(n::T, k::T) where T<:Integer
+
+
+nextpow(a::Real, x::Real)
+
+prevpow(a::Real, x::Real)
+
+floor
+ceil
+<<
+>>
+
+
+ndigits0z
+ndigits0z
+ndigitsnb
+ndigits(x::Unsigned, b::Integer)
+ndigits(x::Unsigned)
+bin(x::Unsigned, pad::Int, neg::Bool)
+oct(x::Unsigned, pad::Int, neg::Bool)
+dec(x::Unsigned, pad::Int, neg::Bool)
+hex(x::Unsigned, pad::Int, neg::Bool)
+
+base(b::Int, x::Unsigned, pad::Int, neg::Bool)
+bin(n, pad::Int=1)
+hex(n, pad::Int=1)
+oct(n, pad::Int=1)
+dec(n, pad::Int=1)
+
+digits([T<:Integer], n::Integer, base::T=10, pad::Integer=1)
+
+=#
+
+
+
+
 function withnan end
 export withnan
 
