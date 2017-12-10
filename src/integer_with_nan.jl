@@ -12,6 +12,15 @@ end
 export IntegerWithNaN
 
 
+function Base.show(io::IO, ::MIME"text/plain", x::IntegerWithNaN{T}) where T
+    if !isnan(x)
+        print(io, "withnan($(x.encoded))")
+    else
+        print(io, "$(T)NaN")
+    end
+end
+
+
 Base.isnan(x::IntegerWithNaN{T}) where {T} =
     x.encoded == encode_nan(T)
 
@@ -124,6 +133,28 @@ for op in (:(+), :(-), :(*), :(/), :(^))
 end
 
 
+import Base: div, fld, cld, rem, mod, mod1, fld1, max, min, minmax
+
+for op in (:(div), :(fld), :(cld), :(rem), :(mod), :(mod1), :(fld1), :(max), :(min), :(minmax))
+    @eval begin
+        function $op(a::IntegerWithNaN, b::Real)
+            R = _result_type(a, b)
+            ifelse(isnan(a), nanvalue(R), convert(R, $op(a.encoded, b)))
+        end
+
+        function $op(a::Real, b::IntegerWithNaN)
+            R = _result_type(a, b)
+            ifelse(isnan(b), nanvalue(R), convert(R, $op(a, b.encoded)))
+        end
+
+        function $op(a::IntegerWithNaN, b::IntegerWithNaN)
+            R = _result_type(a, b)
+            ifelse(isnan(a) || isnan(b), nanvalue(R), convert(R, $op(a.encoded, b.encoded)))
+        end
+    end
+end
+
+
 function withnan end
 export withnan
 
@@ -151,3 +182,13 @@ Base.@pure encode_nan(T::Type{<:Integer}) = typemax(T)
 
 
 _result_type(a::T, b::U) where {T,U} = promote_type(T, U)
+
+
+export IntNaN, Int32NaN, Int64NaN, UInt32NaN, UInt64NaN
+
+const IntNaN = IntegerWithNaN{Int}()
+const Int32NaN = IntegerWithNaN{Int32}()
+const Int64NaN = IntegerWithNaN{Int64}()
+const UIntNaN = IntegerWithNaN{UInt}()
+const UInt32NaN = IntegerWithNaN{Int32}()
+const UInt64NaN = IntegerWithNaN{Int64}()
