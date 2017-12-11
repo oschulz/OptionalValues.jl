@@ -196,9 +196,10 @@ for op in (:(<<), :(>>), :(>>>))
 end
 
 
-import Base: nextpow2, prevpow2, isqrt
+import Base: nextpow2, prevpow2, isqrt, abs
 
-for op in (:(nextpow2), :(prevpow2), :(isqrt))
+
+for op in (:(nextpow2), :(prevpow2), :(isqrt), :(abs))
     @eval begin
         @inline $op(x::IntegerWithNaN) = _unary_fwd($op, x)
     end
@@ -228,41 +229,17 @@ Currently not implemented for IntNaN:
 * binomial(n::T, k::T) where T<:Integer
 * nextpow(a::Real, x::Real)
 * prevpow(a::Real, x::Real)
-
-
------------------------------------------------
-
-To implement:
-
-
-<<
->>
-
-
-ndigits0z
-ndigits0z
-ndigitsnb
-ndigits(x::Unsigned, b::Integer)
-ndigits(x::Unsigned)
-bin(x::Unsigned, pad::Int, neg::Bool)
-oct(x::Unsigned, pad::Int, neg::Bool)
-dec(x::Unsigned, pad::Int, neg::Bool)
-hex(x::Unsigned, pad::Int, neg::Bool)
-
-base(b::Int, x::Unsigned, pad::Int, neg::Bool)
-bin(n, pad::Int=1)
-hex(n, pad::Int=1)
-oct(n, pad::Int=1)
-dec(n, pad::Int=1)
-
-digits([T<:Integer], n::Integer, base::T=10, pad::Integer=1)
-
-powermod(x::Integer, p::Integer, m)
-
+* ndigits(x::Integer)
+* ndigits(x::Unsigned, b::Integer)
+* bin(x::Unsigned, pad::Int, neg::Bool)
+* oct(x::Unsigned, pad::Int, neg::Bool)
+* dec(x::Unsigned, pad::Int, neg::Bool)
+* hex(x::Unsigned, pad::Int, neg::Bool)
+* base(b::Int, x::Unsigned, pad::Int, neg::Bool)
+* digits([T<:Integer], n::Integer, base::T=10, pad::Integer=1)
+* powermod(x::Integer, p::Integer, m)
 
 =#
-
-
 
 
 function withnan end
