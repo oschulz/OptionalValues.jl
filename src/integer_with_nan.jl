@@ -181,6 +181,21 @@ for op in (:(gcd), :(lcm))
 end
 
 
+import Base: <<, >>, >>>
+
+for op in (:(<<), :(>>), :(>>>))
+    @eval begin
+        @inline $op(a::IntegerWithNaN, b::Integer) = _binary_fwd($op, a, b)
+        @inline $op(a::IntegerWithNaN, b::Int) = _binary_fwd($op, a, b)
+        @inline $op(a::IntegerWithNaN, b::Bool) = _binary_fwd($op, a, b)
+        @inline $op(a::Integer, b::IntegerWithNaN) = _binary_fwd($op, a, b)
+        @inline $op(a::Int, b::IntegerWithNaN) = _binary_fwd($op, a, b)
+        @inline $op(a::Bool, b::IntegerWithNaN) = _binary_fwd($op, a, b)
+        @inline $op(a::IntegerWithNaN, b::IntegerWithNaN) = _binary_fwd($op, a, b)
+    end
+end
+
+
 import Base: nextpow2, prevpow2, isqrt
 
 for op in (:(nextpow2), :(prevpow2), :(isqrt))
@@ -211,6 +226,8 @@ Currently not implemented for IntNaN:
 
 * factorial(n::Integer)
 * binomial(n::T, k::T) where T<:Integer
+* nextpow(a::Real, x::Real)
+* prevpow(a::Real, x::Real)
 
 
 -----------------------------------------------
@@ -218,13 +235,6 @@ Currently not implemented for IntNaN:
 To implement:
 
 
-
-nextpow(a::Real, x::Real)
-
-prevpow(a::Real, x::Real)
-
-floor
-ceil
 <<
 >>
 
@@ -280,10 +290,6 @@ export nanvalue
 Base.@pure nanvalue(TN::Type{IntegerWithNaN{T}}) where {T} = TN()
 Base.@pure nanvalue(TN::Type{T}) where {T<:AbstractFloat} = convert(T, NaN)
 
-nanvalue(x::Number) = nanvalue(typeof(x))
-
-
-Base.@pure nanvalue(TN::Type{T}) where {T<:Integer} = nanvalue(IntegerWithNaN{T})
 nanvalue(x::Number) = nanvalue(typeof(x))
 
 
