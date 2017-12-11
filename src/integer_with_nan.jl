@@ -74,8 +74,8 @@ Base.rem(x::IntegerWithNaN, TN::Type{IntegerWithNaN{T}}) where {T} =
 
 
 @inline function _unary_fwd(f::Function, x::IntegerWithNaN)
-    y = f(x.encoded)
-    ifelse(isnan(x), intnanvalue(y), y)
+    y = withnan(f(x.encoded))
+    ifelse(isnan(x), nanvalue(y), y)
 end
 
 @inline _unary_fwd_boolret(f::Function, x::IntegerWithNaN) =
@@ -83,18 +83,18 @@ end
 
 
 @inline function _binary_fwd(f::Function, a::IntegerWithNaN, b)
-    y = f(a.encoded, b)
-    ifelse(isnan(a), intnanvalue(y), y)
+    y = withnan(f(a.encoded, b))
+    ifelse(isnan(a), nanvalue(y), y)
 end
 
 @inline function _binary_fwd(f::Function, a, b::IntegerWithNaN)
-    y = f(a, b.encoded)
-    ifelse(isnan(b), intnanvalue(y), y)
+    y = withnan(f(a, b.encoded))
+    ifelse(isnan(b), nanvalue(y), y)
 end
 
 @inline function _binary_fwd(f::Function, a::IntegerWithNaN, b::IntegerWithNaN)
-    y = f(a.encoded, b.encoded)
-    ifelse(isnan(a) || isnan(b), intnanvalue(y), y)
+    y = withnan(f(a.encoded, b.encoded))
+    ifelse(isnan(a) || isnan(b), nanvalue(y), y)
 end
 
 
@@ -131,16 +131,29 @@ for op in (:(<), :(<=))
 end
 
 
-import Base: +, -, *, /, ^
+import Base: +, -, *, /
 
-for op in (:(+), :(-), :(*), :(/), :(^))
+for op in (:(+), :(-), :(*), :(/))
+    @eval begin
+        @inline $op(a::IntegerWithNaN, b::Number) = _binary_fwd($op, a, b)
+        @inline $op(a::IntegerWithNaN, b::Bool) = _binary_fwd($op, a, b)
+        @inline $op(a::Number, b::IntegerWithNaN) = _binary_fwd($op, a, b)
+        @inline $op(a::Bool, b::IntegerWithNaN) = _binary_fwd($op, a, b)
+        @inline $op(a::IntegerWithNaN, b::IntegerWithNaN) = _binary_fwd($op, a, b)
+    end
+end
+
+
+import Base: ^
+
+for op in (:(^),)
     @eval begin
         @inline $op(a::IntegerWithNaN, b::Number) = _binary_fwd($op, a, b)
         @inline $op(a::IntegerWithNaN, b::Integer) = _binary_fwd($op, a, b)
         @inline $op(a::IntegerWithNaN, b::Bool) = _binary_fwd($op, a, b)
         @inline $op(a::Number, b::IntegerWithNaN) = _binary_fwd($op, a, b)
         @inline $op(a::Integer, b::IntegerWithNaN) = _binary_fwd($op, a, b)
-        @inline $op(a::Bool, b::IntegerWithNaN) = _binary_fwd($op, a, b)
+        @inline $op(a::Bool, b::IntegerWithNaN) = _binary_fwd_boolret($op, a, b)
         @inline $op(a::IntegerWithNaN, b::IntegerWithNaN) = _binary_fwd($op, a, b)
     end
 end
@@ -168,9 +181,9 @@ for op in (:(gcd), :(lcm))
 end
 
 
-import Base: nextpow2, prevpow2, ispow2, isqrt, factorial
+import Base: nextpow2, prevpow2, isqrt
 
-for op in (:(nextpow2), :(prevpow2), :(ispow2), :(isqrt), :(factorial))
+for op in (:(nextpow2), :(prevpow2), :(isqrt))
     @eval begin
         @inline $op(x::IntegerWithNaN) = _unary_fwd($op, x)
     end
@@ -254,9 +267,11 @@ Base.@pure withnan(::Type{UInt32}) = IntegerWithNaN{UInt32}
 Base.@pure withnan(::Type{Int64}) = IntegerWithNaN{Int64}
 Base.@pure withnan(::Type{UInt64}) = IntegerWithNaN{UInt64}
 
+Base.@pure withnan(::Type{T}) where {T<:AbstractFloat} = T
+
 # Base.@pure withnan(::Type{Bool}) = IntegerWithNaN{Int8}
 
-withnan(x::Integer) = convert(withnan(typeof(x)), x)
+withnan(x::Number) = convert(withnan(typeof(x)), x)
 
 
 function nanvalue end
@@ -268,8 +283,8 @@ Base.@pure nanvalue(TN::Type{T}) where {T<:AbstractFloat} = convert(T, NaN)
 nanvalue(x::Number) = nanvalue(typeof(x))
 
 
-Base.@pure intnanvalue(TN::Type{T}) where {T<:Integer} = nanvalue(IntegerWithNaN{T})
-intnanvalue(x::Number) = intnanvalue(typeof(x))
+Base.@pure nanvalue(TN::Type{T}) where {T<:Integer} = nanvalue(IntegerWithNaN{T})
+nanvalue(x::Number) = nanvalue(typeof(x))
 
 
 Base.@pure encode_nan(T::Type{<:Integer}) = typemax(T)
