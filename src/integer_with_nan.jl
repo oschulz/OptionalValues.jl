@@ -136,8 +136,10 @@ import Base: +, -, *, /, ^
 for op in (:(+), :(-), :(*), :(/), :(^))
     @eval begin
         @inline $op(a::IntegerWithNaN, b::Number) = _binary_fwd($op, a, b)
+        @inline $op(a::IntegerWithNaN, b::Integer) = _binary_fwd($op, a, b)
         @inline $op(a::IntegerWithNaN, b::Bool) = _binary_fwd($op, a, b)
         @inline $op(a::Number, b::IntegerWithNaN) = _binary_fwd($op, a, b)
+        @inline $op(a::Integer, b::IntegerWithNaN) = _binary_fwd($op, a, b)
         @inline $op(a::Bool, b::IntegerWithNaN) = _binary_fwd($op, a, b)
         @inline $op(a::IntegerWithNaN, b::IntegerWithNaN) = _binary_fwd($op, a, b)
     end
@@ -166,9 +168,9 @@ for op in (:(gcd), :(lcm))
 end
 
 
-import Base: nextpow2, prevpow2, ispow2
+import Base: nextpow2, prevpow2, ispow2, isqrt, factorial
 
-for op in (:(nextpow2), :(prevpow2), :(ispow2))
+for op in (:(nextpow2), :(prevpow2), :(ispow2), :(isqrt), :(factorial))
     @eval begin
         @inline $op(x::IntegerWithNaN) = _unary_fwd($op, x)
     end
@@ -192,14 +194,16 @@ Base.checked_abs(x::SignedIntWithNan) =
 
 #=
 
+Currently not implemented for IntNaN:
 
-nextpow2(x::Integer)
-prevpow2(x::Integer)
-ispow2(x::Integer)
-isqrt(n::Integer)
+* factorial(n::Integer)
+* binomial(n::T, k::T) where T<:Integer
 
-factorial(n::Integer)
-binomial(n::T, k::T) where T<:Integer
+
+-----------------------------------------------
+
+To implement:
+
 
 
 nextpow(a::Real, x::Real)
