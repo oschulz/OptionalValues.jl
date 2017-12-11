@@ -159,14 +159,22 @@ for op in (:(^),)
 end
 
 
-import Base: div, fld, cld, rem, mod, mod1, fld1, max, min, minmax
+import Base: div, fld, cld, rem, mod, mod1, fld1, max, min
 
-for op in (:(div), :(fld), :(cld), :(rem), :(mod), :(mod1), :(fld1), :(max), :(min), :(minmax))
+for op in (:(div), :(fld), :(cld), :(rem), :(mod), :(mod1), :(fld1), :(max), :(min))
     @eval begin
         @inline $op(a::IntegerWithNaN, b::Real) = _binary_fwd($op, a, b)
         @inline $op(a::Real, b::IntegerWithNaN) = _binary_fwd($op, a, b)
         @inline $op(a::IntegerWithNaN, b::IntegerWithNaN) = _binary_fwd($op, a, b)
     end
+end
+
+
+function Base.minmax(a::T, b::T) where {T<:IntegerWithNaN}
+    y = minmax(a.encoded, b.encoded)
+    r = (withnan(y[1]), withnan(y[2]))
+    nan_r = (nanvalue(r[1]), nanvalue(r[2]))
+    ifelse(isnan(a) || isnan(b), nan_r, r)
 end
 
 
