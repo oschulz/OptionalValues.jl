@@ -78,6 +78,9 @@ Base.rem(x::IntegerWithNaN, TN::Type{IntegerWithNaN{T}}) where {T} =
     ifelse(isnan(x), intnanvalue(y), y)
 end
 
+@inline _unary_fwd_boolret(f::Function, x::IntegerWithNaN) =
+    ifelse(isnan(x), false, f(x.encoded))
+
 
 @inline function _binary_fwd(f::Function, a::IntegerWithNaN, b)
     y = f(a.encoded, b)
@@ -163,11 +166,20 @@ for op in (:(gcd), :(lcm))
 end
 
 
-import Base: nextpow2, prevpow2
+import Base: nextpow2, prevpow2, ispow2
 
-for op in (:(nextpow2), :(prevpow2))
+for op in (:(nextpow2), :(prevpow2), :(ispow2))
     @eval begin
         @inline $op(x::IntegerWithNaN) = _unary_fwd($op, x)
+    end
+end
+
+
+import Base: ispow2
+
+for op in (:(ispow2),)
+    @eval begin
+        @inline $op(x::IntegerWithNaN) = _unary_fwd_boolret($op, x)
     end
 end
 
