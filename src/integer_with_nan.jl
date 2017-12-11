@@ -21,7 +21,7 @@ function Base.show(io::IO, ::MIME"text/plain", x::IntegerWithNaN{T}) where T
 end
 
 Base.show(io::IO, x::IntegerWithNaN{T}) where T =
-    show(io, ::MIME"text/plain", x)
+    show(io, MIME"text/plain"(), x)
 
 
 Base.isnan(x::IntegerWithNaN{T}) where {T} =
@@ -75,23 +75,23 @@ Base.rem(x::IntegerWithNaN, TN::Type{IntegerWithNaN{T}}) where {T} =
 
 @inline function _unary_fwd(f::Function, x::IntegerWithNaN)
     y = f(x.encoded)
-    ifelse(isnan(x), intnan(y), y)
+    ifelse(isnan(x), intnanvalue(y), y)
 end
 
 
 @inline function _binary_fwd(f::Function, a::IntegerWithNaN, b)
     y = f(a.encoded, b)
-    ifelse(isnan(a), intnan(y), y)
+    ifelse(isnan(a), intnanvalue(y), y)
 end
 
 @inline function _binary_fwd(f::Function, a, b::IntegerWithNaN)
     y = f(a, b.encoded)
-    ifelse(isnan(b), intnan(y), y)
+    ifelse(isnan(b), intnanvalue(y), y)
 end
 
 @inline function _binary_fwd(f::Function, a::IntegerWithNaN, b::IntegerWithNaN)
     y = f(a.encoded, b.encoded)
-    ifelse(isnan(a) || isnan(b), intnan(y), y)
+    ifelse(isnan(a) || isnan(b), intnanvalue(y), y)
 end
 
 
@@ -175,7 +175,7 @@ end
 const SignedIntWithNan = Union{IntegerWithNaN{Int8},IntegerWithNaN{Int16},IntegerWithNaN{Int32},IntegerWithNaN{Int64},IntegerWithNaN{Int128}}
 
 Base.checked_abs(x::SignedIntWithNan) =
-    ifelse(isnan(x), intnan(typeof(x)), Base.checked_abs(x.encoded))
+    ifelse(isnan(x), nanvalue(typeof(x)), Base.checked_abs(x.encoded))
 
 
 #=
@@ -243,13 +243,18 @@ Base.@pure withnan(::Type{UInt64}) = IntegerWithNaN{UInt64}
 withnan(x::Integer) = convert(withnan(typeof(x)), x)
 
 
-function intnan end
-export intnan
+function nanvalue end
+export nanvalue
 
-Base.@pure intnan(TN::Type{IntegerWithNaN{T}}) where {T} = TN()
-Base.@pure intnan(TN::Type{T}) where {T<:Integer} = intnan(IntegerWithNaN{T})
+Base.@pure nanvalue(TN::Type{IntegerWithNaN{T}}) where {T} = TN()
+Base.@pure nanvalue(TN::Type{T}) where {T<:AbstractFloat} = convert(T, NaN)
 
-intnan(x::Integer) = intnan(typeof(x))
+nanvalue(x::Number) = nanvalue(typeof(x))
+
+
+Base.@pure intnanvalue(TN::Type{T}) where {T<:Integer} = nanvalue(IntegerWithNaN{T})
+intnanvalue(x::Number) = intnanvalue(typeof(x))
+
 
 Base.@pure encode_nan(T::Type{<:Integer}) = typemax(T)
 
