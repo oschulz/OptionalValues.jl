@@ -1,13 +1,16 @@
 # This file is a part of OptionalValues.jl, licensed under the MIT License (MIT).
 
 
+abstract type _Internal_ end
+
+
 struct IntegerWithNaN{T<:Integer} <: Integer
     encoded::T
 
-    IntegerWithNaN{T}() where {T<:Integer} = new(encode_nan(T))
-
-    IntegerWithNaN{T}(x) where {T<:Integer} = new(x)
+    IntegerWithNaN{T}(::Type{_Internal_}, x::T) where {T<:Integer} = new(x)
 end
+
+IntegerWithNaN{T}() where {T<:Integer} = IntegerWithNaN{T}(encode_nan(T))
 
 export IntegerWithNaN
 
@@ -37,9 +40,20 @@ Base.promote_rule(::Type{T}, ::Type{IntegerWithNaN{U}}) where {T<:AbstractFloat,
     float(promote_type(T,U))
 
 
-Base.convert(TN::Type{IntegerWithNaN{T}}, x::Integer) where {T} = TN(x)
+@inline Base.convert(TN::Type{IntegerWithNaN{T}}, x::IntegerWithNaN{T}) where {T} = x
 
-function Base.convert(T::Type{<:Integer}, x::IntegerWithNaN)
+@inline function Base.convert(TN::Type{IntegerWithNaN{T}}, x::IntegerWithNaN{U}) where {T,U}
+    if !isnan(x)
+        TN(_Internal_, convert(T, x.encoded))
+    else
+        TN()
+    end
+end
+
+
+@inline Base.convert(TN::Type{IntegerWithNaN{T}}, x::Integer) where {T} = TN(_Internal_, convert(T, x))
+
+@inline function Base.convert(::Type{<:Integer}, x::IntegerWithNaN{T}) where {T}
     if !isnan(x)
         convert(T, x.encoded)
     else
@@ -47,29 +61,23 @@ function Base.convert(T::Type{<:Integer}, x::IntegerWithNaN)
     end
 end
 
-function Base.convert(TN::Type{IntegerWithNaN{T}}, x::IntegerWithNaN) where {T}
-    if !isnan(x)
-        TN(convert(T, x.encoded))
-    else
-        TN()
-    end
-end
 
-Base.convert(TN::Type{IntegerWithNaN{T}}, x::AbstractFloat) where {T} =
-    ifelse(isnan(x), TN(), TN(convert(T, x)))
+@inline Base.convert(TN::Type{IntegerWithNaN{T}}, x::AbstractFloat) where {T} =
+    ifelse(isnan(x), TN(), TN(_Internal_, convert(T, x)))
 
-Base.convert(T::Type{<:AbstractFloat}, x::IntegerWithNaN) =
+@inline Base.convert(T::Type{<:AbstractFloat}, x::IntegerWithNaN) =
     ifelse(isnan(x), convert(T, NaN), convert(T, x.encoded))
 
 
-Base.rem(x::IntegerWithNaN{T}, ::Type{<:Integer}) where {T} =
+
+@inline Base.rem(x::IntegerWithNaN{T}, ::Type{<:Integer}) where {T} =
     rem(x.encoded, T)
 
-Base.rem(x::Integer, TN::Type{IntegerWithNaN{T}}) where {T} =
-    TN(rem(x, T))
+@inline Base.rem(x::Integer, TN::Type{IntegerWithNaN{T}}) where {T} =
+    TN(_Internal_, rem(x, T))
 
-Base.rem(x::IntegerWithNaN, TN::Type{IntegerWithNaN{T}}) where {T} =
-    ifelse(isnan(x), TN(), TN(rem(x.encoded, T)))
+@inline Base.rem(x::IntegerWithNaN, TN::Type{IntegerWithNaN{T}}) where {T} =
+    ifelse(isnan(x), TN(), TN(_Internal_, rem(x.encoded, T)))
 
 
 
@@ -225,7 +233,7 @@ end
 
 const SignedIntWithNan = Union{IntegerWithNaN{Int8},IntegerWithNaN{Int16},IntegerWithNaN{Int32},IntegerWithNaN{Int64},IntegerWithNaN{Int128}}
 
-Base.checked_abs(x::SignedIntWithNan) =
+@inline  Base.checked_abs(x::SignedIntWithNan) =
     ifelse(isnan(x), nanvalue(typeof(x)), Base.checked_abs(x.encoded))
 
 
@@ -266,7 +274,7 @@ Base.@pure withnan(::Type{T}) where {T<:AbstractFloat} = T
 
 # Base.@pure withnan(::Type{Bool}) = IntegerWithNaN{Int8}
 
-withnan(x::Number) = convert(withnan(typeof(x)), x)
+@inline withnan(x::Number) = convert(withnan(typeof(x)), x)
 
 
 function nanvalue end
@@ -275,7 +283,7 @@ export nanvalue
 Base.@pure nanvalue(TN::Type{IntegerWithNaN{T}}) where {T} = TN()
 Base.@pure nanvalue(TN::Type{T}) where {T<:AbstractFloat} = convert(T, NaN)
 
-nanvalue(x::Number) = nanvalue(typeof(x))
+@inline nanvalue(x::Number) = nanvalue(typeof(x))
 
 
 Base.@pure encode_nan(T::Type{<:Integer}) = typemax(T)
