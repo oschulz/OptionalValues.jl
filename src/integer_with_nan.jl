@@ -4,10 +4,13 @@
 abstract type _Internal_ end
 
 
-struct IntegerWithNaN{T<:Integer} <: Integer
+const PrimInt = Union{Signed,Unsigned}
+
+
+struct IntegerWithNaN{T<:PrimInt} <: Integer
     encoded::T
 
-    IntegerWithNaN{T}(::Type{_Internal_}, x::T) where {T<:Integer} = new(x)
+    IntegerWithNaN{T}(::Type{_Internal_}, x::T) where {T<:PrimInt} = new(x)
 end
 
 IntegerWithNaN{T}() where {T<:Integer} = IntegerWithNaN{T}(encode_nan(T))
@@ -42,13 +45,8 @@ Base.promote_rule(::Type{T}, ::Type{IntegerWithNaN{U}}) where {T<:AbstractFloat,
 
 @inline Base.convert(TN::Type{IntegerWithNaN{T}}, x::IntegerWithNaN{T}) where {T} = x
 
-@inline function Base.convert(TN::Type{IntegerWithNaN{T}}, x::IntegerWithNaN{U}) where {T,U}
-    if !isnan(x)
-        TN(_Internal_, convert(T, x.encoded))
-    else
-        TN()
-    end
-end
+@inline Base.convert(TN::Type{IntegerWithNaN{T}}, x::IntegerWithNaN{U}) where {T,U} =
+    _intnan_or_value(TN, isnan(x), x.encoded)
 
 
 @inline Base.convert(TN::Type{IntegerWithNaN{T}}, x::Integer) where {T} = TN(_Internal_, convert(T, x))
@@ -63,7 +61,7 @@ end
 
 
 @inline Base.convert(TN::Type{IntegerWithNaN{T}}, x::AbstractFloat) where {T} =
-    ifelse(isnan(x), TN(), TN(_Internal_, convert(T, x)))
+    _intnan_or_value(TN, isnan(x), x)
 
 @inline Base.convert(T::Type{<:AbstractFloat}, x::IntegerWithNaN) =
     ifelse(isnan(x), convert(T, NaN), convert(T, x.encoded))
@@ -77,34 +75,24 @@ end
     TN(_Internal_, rem(x, T))
 
 @inline Base.rem(x::IntegerWithNaN, TN::Type{IntegerWithNaN{T}}) where {T} =
-    ifelse(isnan(x), TN(), TN(_Internal_, rem(x.encoded, T)))
+    _intnan_or_value(TN, isnan(x), rem(x.encoded, T))
 
 
-
-@inline function _unary_fwd(f::Function, x::IntegerWithNaN)
-    y = withnan(f(x.encoded))
-    ifelse(isnan(x), nanvalue(y), y)
-end
+@inline _unary_fwd(f::Function, x::IntegerWithNaN) =
+    _intnan_or_value(isnan(x), f(x.encoded))
 
 @inline _unary_fwd_boolret(f::Function, x::IntegerWithNaN) =
     ifelse(isnan(x), false, f(x.encoded))
 
 
-@inline function _binary_fwd(f::Function, a::IntegerWithNaN, b)
-    y = withnan(f(a.encoded, b))
-    ifelse(isnan(a), nanvalue(y), y)
-end
+@inline function _binary_fwd(f::Function, a::IntegerWithNaN, b) =
+    _intnan_or_value(isnan(a), f(a.encoded, b))
 
-@inline function _binary_fwd(f::Function, a, b::IntegerWithNaN)
-    y = withnan(f(a, b.encoded))
-    ifelse(isnan(b), nanvalue(y), y)
-end
+@inline function _binary_fwd(f::Function, a, b::IntegerWithNaN) =
+    _intnan_or_value(isnan(b), f(a, b.encoded))
 
-@inline function _binary_fwd(f::Function, a::IntegerWithNaN, b::IntegerWithNaN)
-    y = withnan(f(a.encoded, b.encoded))
-    ifelse(isnan(a) || isnan(b), nanvalue(y), y)
-end
-
+@inline _binary_fwd(f::Function, a::IntegerWithNaN, b::IntegerWithNaN) =
+    _intnan_or_value(isnan(a) || isnan(b), f(a.encoded, b.encoded))
 
 @inline _binary_fwd_boolret(f::Function, a::IntegerWithNaN, b) =
     ifelse(isnan(a), false, f(a.encoded, b))
@@ -180,9 +168,9 @@ end
 
 function Base.minmax(a::T, b::T) where {T<:IntegerWithNaN}
     y = minmax(a.encoded, b.encoded)
-    r = (withnan(y[1]), withnan(y[2]))
-    nan_r = (nanvalue(r[1]), nanvalue(r[2]))
-    ifelse(isnan(a) || isnan(b), nan_r, r)
+    r_1 = _intnan_or_value(isnan(a) || isnan(b), y[1])
+    r_2 = _intnan_or_value(isnan(a) || isnan(b), y[2])
+    (r1, r2)
 end
 
 
@@ -234,7 +222,7 @@ end
 const SignedIntWithNan = Union{IntegerWithNaN{Int8},IntegerWithNaN{Int16},IntegerWithNaN{Int32},IntegerWithNaN{Int64},IntegerWithNaN{Int128}}
 
 @inline  Base.checked_abs(x::SignedIntWithNan) =
-    ifelse(isnan(x), nanvalue(typeof(x)), Base.checked_abs(x.encoded))
+    _intnan_or_value(isnan(x), Base.checked_abs(x.encoded))
 
 
 #=
@@ -290,6 +278,13 @@ Base.@pure encode_nan(T::Type{<:Integer}) = typemax(T)
 
 
 _result_type(a::T, b::U) where {T,U} = promote_type(T, U)
+
+
+@inline _intnan_or_value(TN::Type{IntegerWithNaN{T}}, cond::Bool, value::PrimInt) where T =
+    TN(_Internal_, ifelse(cond, encode_nan(T), convert(T, value)))
+
+@inline function _intnan_or_value(cond::Bool, value::PrimInt) =
+    _intnan_or_value(IntegerWithNaN{typeof(value)}, cond, value)
 
 
 export IntNaN, Int32NaN, Int64NaN, UInt32NaN, UInt64NaN
