@@ -46,7 +46,7 @@ Base.promote_rule(::Type{T}, ::Type{IntegerWithNaN{U}}) where {T<:AbstractFloat,
 @inline Base.convert(TN::Type{IntegerWithNaN{T}}, x::IntegerWithNaN{T}) where {T} = x
 
 @inline Base.convert(TN::Type{IntegerWithNaN{T}}, x::IntegerWithNaN{U}) where {T,U} =
-    _intnan_or_value(TN, isnan(x), x.encoded)
+    _nan_or_value(TN, isnan(x), x.encoded)
 
 
 @inline Base.convert(TN::Type{IntegerWithNaN{T}}, x::Integer) where {T} = TN(_Internal_, convert(T, x))
@@ -61,7 +61,7 @@ end
 
 
 @inline Base.convert(TN::Type{IntegerWithNaN{T}}, x::AbstractFloat) where {T} =
-    _intnan_or_value(TN, isnan(x), x)
+    _nan_or_value(TN, isnan(x), x)
 
 @inline Base.convert(T::Type{<:AbstractFloat}, x::IntegerWithNaN) =
     ifelse(isnan(x), convert(T, NaN), convert(T, x.encoded))
@@ -75,24 +75,24 @@ end
     TN(_Internal_, rem(x, T))
 
 @inline Base.rem(x::IntegerWithNaN, TN::Type{IntegerWithNaN{T}}) where {T} =
-    _intnan_or_value(TN, isnan(x), rem(x.encoded, T))
+    _nan_or_value(TN, isnan(x), rem(x.encoded, T))
 
 
 @inline _unary_fwd(f::Function, x::IntegerWithNaN) =
-    _intnan_or_value(isnan(x), f(x.encoded))
+    _nan_or_value(isnan(x), f(x.encoded))
 
 @inline _unary_fwd_boolret(f::Function, x::IntegerWithNaN) =
     ifelse(isnan(x), false, f(x.encoded))
 
 
-@inline function _binary_fwd(f::Function, a::IntegerWithNaN, b) =
-    _intnan_or_value(isnan(a), f(a.encoded, b))
+@inline _binary_fwd(f::Function, a::IntegerWithNaN, b) =
+    _nan_or_value(isnan(a), f(a.encoded, b))
 
-@inline function _binary_fwd(f::Function, a, b::IntegerWithNaN) =
-    _intnan_or_value(isnan(b), f(a, b.encoded))
+@inline _binary_fwd(f::Function, a, b::IntegerWithNaN) =
+    _nan_or_value(isnan(b), f(a, b.encoded))
 
 @inline _binary_fwd(f::Function, a::IntegerWithNaN, b::IntegerWithNaN) =
-    _intnan_or_value(isnan(a) || isnan(b), f(a.encoded, b.encoded))
+    _nan_or_value(isnan(a) || isnan(b), f(a.encoded, b.encoded))
 
 @inline _binary_fwd_boolret(f::Function, a::IntegerWithNaN, b) =
     ifelse(isnan(a), false, f(a.encoded, b))
@@ -168,8 +168,8 @@ end
 
 function Base.minmax(a::T, b::T) where {T<:IntegerWithNaN}
     y = minmax(a.encoded, b.encoded)
-    r_1 = _intnan_or_value(isnan(a) || isnan(b), y[1])
-    r_2 = _intnan_or_value(isnan(a) || isnan(b), y[2])
+    r1 = _nan_or_value(isnan(a) || isnan(b), y[1])
+    r2 = _nan_or_value(isnan(a) || isnan(b), y[2])
     (r1, r2)
 end
 
@@ -222,7 +222,7 @@ end
 const SignedIntWithNan = Union{IntegerWithNaN{Int8},IntegerWithNaN{Int16},IntegerWithNaN{Int32},IntegerWithNaN{Int64},IntegerWithNaN{Int128}}
 
 @inline  Base.checked_abs(x::SignedIntWithNan) =
-    _intnan_or_value(isnan(x), Base.checked_abs(x.encoded))
+    _nan_or_value(isnan(x), Base.checked_abs(x.encoded))
 
 
 #=
@@ -280,11 +280,14 @@ Base.@pure encode_nan(T::Type{<:Integer}) = typemax(T)
 _result_type(a::T, b::U) where {T,U} = promote_type(T, U)
 
 
-@inline _intnan_or_value(TN::Type{IntegerWithNaN{T}}, cond::Bool, value::PrimInt) where T =
+@inline _nan_or_value(TN::Type{IntegerWithNaN{T}}, cond::Bool, value) where T =
     TN(_Internal_, ifelse(cond, encode_nan(T), convert(T, value)))
 
-@inline function _intnan_or_value(cond::Bool, value::PrimInt) =
-    _intnan_or_value(IntegerWithNaN{typeof(value)}, cond, value)
+@inline _nan_or_value(cond::Bool, value::PrimInt) =
+    _nan_or_value(IntegerWithNaN{typeof(value)}, cond, value)
+
+@inline _nan_or_value(cond::Bool, value::AbstractFloat) =
+    ifelse(cond, convert(typeof(value), NaN), value)
 
 
 export IntNaN, Int32NaN, Int64NaN, UInt32NaN, UInt64NaN
